@@ -37,30 +37,43 @@ class GameMatrixTest(unittest.TestCase):
 
         self.matrix.mark('x', (0,0))
         self.matrix.mark('o', (1,0))
-        self.assertTrue(self.matrix.state() == self.matrix.ACTIVE)
         self.matrix.mark('x', (0,1))
         self.matrix.mark('o', (2,0))
-        self.assertTrue(self.matrix.state() == self.matrix.ACTIVE)
         self.matrix.mark('x', (0,2))
         self.assertTrue(self.matrix.state() == self.matrix.X_WIN)
 
         self.assertTrue(self.matrix._win_check('x'))
         self.assertFalse(self.matrix._win_check('o'))
 
-    def test_owin_states2(self):
+    def test_owin_states(self):
         """Test that player O can win."""
         self.assertTrue(self.matrix.state() == self.matrix.EMPTY)
 
         self.matrix.mark('o', (0,0))
         self.matrix.mark('x', (2,1))
-        self.assertTrue(self.matrix.state() == self.matrix.ACTIVE)
         self.matrix.mark('o', (1,0))
         self.matrix.mark('x', (1,2))
-        self.assertTrue(self.matrix.state() == self.matrix.ACTIVE)
         self.matrix.mark('o', (2,0))
         self.assertTrue(self.matrix.state() == self.matrix.O_WIN)
 
         self.assertTrue(self.matrix._win_check('o'))
+        self.assertFalse(self.matrix._win_check('x'))
+
+    def test_draw(self):
+        self.assertTrue(self.matrix.state() == self.matrix.EMPTY)
+
+        self.matrix.mark('x', (0,0))
+        self.matrix.mark('o', (1,0))
+        self.matrix.mark('x', (0,1))
+        self.matrix.mark('o', (0,2))
+        self.matrix.mark('x', (1,1))
+        self.matrix.mark('o', (2,1))
+        self.matrix.mark('x', (2,0))
+        self.matrix.mark('o', (2,2))
+        self.matrix.mark('x', (1,2))
+        self.assertTrue(self.matrix.state() == self.matrix.DRAW)
+
+        self.assertFalse(self.matrix._win_check('o'))
         self.assertFalse(self.matrix._win_check('x'))
 
 

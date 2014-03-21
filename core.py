@@ -1,3 +1,5 @@
+import itertools
+
 class Player(object):
     pass
 
@@ -12,17 +14,17 @@ class GameMatrix(object):
         self._matrix = [[0 for x in range(3)] for x in range(3)]
         self._valid_input = ['x', 'o']
 
-        self.EMPTY = 0
+        self.EMPTY = 0 # Initial state
         self.ACTIVE = 1
+
+        # Terminal states
         self.X_WIN = 2
         self.O_WIN = 3
+        self.DRAW = 4
 
-        self._valid_states = {
-            0: 'Inactive',
-            1: 'Active',
-            2: 'X Win',
-            3: 'O Win',
-        }
+    def at(self, coords):
+        x, y = coords
+        return self._matrix[x][y]
 
     def empty(self, coords):
         x, y = coords
@@ -34,7 +36,7 @@ class GameMatrix(object):
         """Places char on the given coordinates.
         Once a coordinate has been "marked", it CANNOT be changed.
         """
-        if self.state() not in (self.EMPTY, self.ACTIVE):
+        if self.state() not in (self.EMPTY, self.ACTIVE, self.DRAW):
             raise self.InvalidMark("Game is already finished.")
 
         x, y = coords
@@ -49,6 +51,15 @@ class GameMatrix(object):
             self._matrix[x][y] = char
         except IndexError:
             raise self.InvalidMark("Out of bounds.")
+
+    def _full(self):
+        """Returns true if every one of the 9 fields are filled."""
+        count = 0
+        for y in range(3):
+            for x in range(3):
+                if self._matrix[x][y] != 0:
+                    count += 1
+        return True if count == 9 else False
 
     def _empty(self):
         for y in range(3):
@@ -67,8 +78,11 @@ class GameMatrix(object):
                 return self.X_WIN
             elif self._win_check('o'):
                 return self.O_WIN
-
-            else: return self.ACTIVE
+            else:
+                if self._full():
+                    return self.DRAW
+                else:
+                    return self.ACTIVE
              
     def _win_check(self, char):
         """Verifies every possible win combination and returns
@@ -98,6 +112,16 @@ class GameMatrix(object):
                 return True
 
         return False
+
+    def __str__(self):
+        preview = " {0} | {1} | {2}\n" \
+            "---+---+---\n" \
+            " {3} | {4} | {5}\n" \
+            "---+---+---\n" \
+            " {6} | {7} | {8}\n"
+
+        values = [x for row in self._matrix for x in row] 
+        return(preview.format(*values).replace('0', ' '))
 
     class InvalidMark(Exception):
         pass
