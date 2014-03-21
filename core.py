@@ -12,6 +12,18 @@ class GameMatrix(object):
         self._matrix = [[0 for x in range(3)] for x in range(3)]
         self._valid_input = ['x', 'o']
 
+        self.EMPTY = 0
+        self.ACTIVE = 1
+        self.X_WIN = 2
+        self.O_WIN = 3
+
+        self._valid_states = {
+            0: 'Inactive',
+            1: 'Active',
+            2: 'X Win',
+            3: 'O Win',
+        }
+
     def empty(self, coords):
         x, y = coords
         if self._matrix[x][y] == 0:
@@ -19,13 +31,73 @@ class GameMatrix(object):
         return False
 
     def mark(self, char, coords):
-        """Places char on the given coordinates."""
+        """Places char on the given coordinates.
+        Once a coordinate has been "marked", it CANNOT be changed.
+        """
+        if self.state() not in (self.EMPTY, self.ACTIVE):
+            raise self.InvalidMark("Game is already finished.")
+
         x, y = coords
 
         if char not in self._valid_input:
-            raise GameMatrix.InvalidMark
+            raise self.InvalidMark("Invalid character.")
 
-        self._matrix[x][y] = char
+        try:
+            if not self.empty(coords):
+                raise self.InvalidMark("Coordinates are not empty.")
+
+            self._matrix[x][y] = char
+        except IndexError:
+            raise self.InvalidMark("Out of bounds.")
+
+    def _empty(self):
+        for y in range(3):
+            for x in range(3):
+                if self._matrix[x][y] != 0:
+                    return False
+        return True
+
+    def state(self):
+        """Returns the state of the game: inactive (empty), active,
+        player X won, player O won."""
+        if self._empty():
+            return self.EMPTY
+        else:
+            if self._win_check('x'):
+                return self.X_WIN
+            elif self._win_check('o'):
+                return self.O_WIN
+
+            else: return self.ACTIVE
+             
+    def _win_check(self, char):
+        """Verifies every possible win combination and returns
+        true if one of them exists."""
+        col1 = [(0,0), (0,1), (0,2)]
+        col2 = [(1,0), (1,1), (1,2)]
+        col3 = [(2,0), (2,1), (2,2)]
+        
+        row1 = [(0,0), (1,0), (2,0)]
+        row2 = [(0, 1), (1,1), (2,1)]
+        row3 = [(0,2), (1,2), (2,2)]
+
+        diag1 = [(2,0), (1,1), (0,2)]
+        diag2 = [(0,0), (1,1), (2,2)]
+
+        possible_wins = [col1, col2, col3, row1, row2, row3, diag1, diag2]
+
+        # Check that the given coords has char present.
+        mark = lambda c: self._matrix[c[0]][c[1]] == char
+        
+        for row in possible_wins:
+            mark_count = 0
+            for coords in row:
+                if mark(coords):
+                    mark_count += 1
+            if mark_count == 3:
+                return True
+
+        return False
 
     class InvalidMark(Exception):
         pass
