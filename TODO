@@ -1,3 +1,4 @@
 1. Game logic
 2. Winning strategy
+    a. Game tree should discard nodes which already have a winner
 3. Human player interface

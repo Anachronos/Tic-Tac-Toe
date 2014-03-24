@@ -10,8 +10,12 @@ class GameMatrix(object):
     It is responsible for storing player moves and verifying
     that a given move is valid.
     """
-    def __init__(self):
-        self._matrix = [[0 for x in range(3)] for x in range(3)]
+    def __init__(self, matrix=None):
+        if not matrix:
+            self._matrix = [[0 for x in range(3)] for x in range(3)]
+        else:
+            self._matrix = matrix
+
         self._valid_input = ['x', 'o']
 
         self.EMPTY = 0 # Initial state

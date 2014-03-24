@@ -1,8 +1,11 @@
+from core import GameMatrix
+
 class State(object):
     """Represents a tic-tac-toe state as a node in the state tree."""
     def __init__(self, value=None):
         self._children = []
         self._value = value
+        self.utility = None
         self.terminal = False
 
     def attach_child(self, state):
@@ -12,11 +15,20 @@ class State(object):
         """Maps to node state."""
         pass
 
+    def __eq__(self, other):
+       return self._value == other 
+
     def __len__(self):
         return len(self._children)
 
+    def __str__(self):
+        return "[\"{0}\": {1}]".format(self._value, self.utility)
+
     def visit(self):
         return self._value
+
+    def children(self):
+        return self._children
 
 
 class StateTree(object):
@@ -32,10 +44,11 @@ class StateTree(object):
         self.head = None
         self.maxfirst = maxfirst
         self._depth = depth
+        # The tic-tac-toe mark controlled by MAX
         self._goal = goal
 
     def generate_states(self, from_sequence='000000000'):
-        self.head = State()
+        self.head = State(from_sequence)
 
         if self.maxfirst:
             self._generate_states(self.head, from_sequence, self._depth)
@@ -46,9 +59,9 @@ class StateTree(object):
 
         # Determine which "mark" has the move in this turn (depth)
         if depth % 2 == 0 and self.maxfirst:
-            char = 'x'
-        else:
             char = 'o'
+        else:
+            char = 'x'
         sequences = create_tictactoe_states(sequence, char)
 
         for seq in sequences:
@@ -56,23 +69,71 @@ class StateTree(object):
             parent_state.attach_child(s)
             self._generate_states(s, seq, depth-1)
 
-    def _utility(self):
-        pass
+    def _utility(self, state):
+        """Returns the utility of a state."""
+        seq = state.visit()
+        matrix = matrix_1d_to_2d(seq) 
 
-    def _minimax(self, state):
+        if matrix.state() == matrix.DRAW:
+            return 0
+        
+        if self._goal == 'x':
+            if matrix.state() == matrix.X_WIN:
+                return 1
+            else:
+                return -1
+        else:
+            if matrix.state() == matrix.O_WIN:
+                return 1
+            else:
+                return -1
+
+    def minimax(self):
         """The minimax algorithm is a recursive function which calculates
         the utility of a state based off the terminal node values."""
+        return self._max_value(self.head, self._depth)
 
     def _min_value(self, state, depth):
-        if depth == 1: return state.value()
+        if depth == 1: return self._utility(state)
+        value = 100
+        for s in state.children():
+            value = min(value, self._max_value(s, depth-1))
+
+        state.utility = value
+
+        return value
 
     def _max_value(self, state, depth):
-        pass
+        if depth == 1: return self._utility(state)
+        value = -100
+        for s in state.children():
+            value = max(value, self._min_value(s, depth-1))
 
-    def find_optimal_move(self, current_state):
-        pass
+        state.utility = value
 
-    def move_next_state(self, new_state):
+        return value
+
+    def find_optimal_move(self):
+        print("Next states:")
+        for child in self.head.children():
+            print(child)
+
+    def state(self):
+        return str(self.head)
+
+    def move_next_state(self):
+        self.head = self._bfs_queue.pop(0)
+        self._bfs_queue.append(*self.head.children())
+
+    def move_state(self, new_state):
+        for child in self.head.children():
+            if child == new_state:
+                print("{0} -> {1}".format(self.head, child))
+                self.head = child
+                return
+        raise StateTree.InvalidState
+
+    class InvalidState(Exception):
         pass
 
 
@@ -100,6 +161,15 @@ def create_tictactoe_states(parent_seq, char):
 
     return children_seq
 
+def matrix_1d_to_2d(sequence):
+    """Returns a GameMatrix object."""
+    matrix = []
+    r = [0, 3, 6]
+    for i in r:
+        matrix.append([x for x in sequence[i:i+3]])
+
+    return GameMatrix(matrix)
+
 if __name__ == '__main__':
     import time
     stree = StateTree(depth=9)
@@ -107,3 +177,13 @@ if __name__ == '__main__':
     stree.generate_states()
     end = time.time()
     print("Done in {0} seconds.".format(str(end-start)))
+    stree.minimax()
+    stree.move_state("0000x0000")
+    stree.move_state("o000x0000")
+    stree.find_optimal_move()
+    stree.move_state("o00xx0000")
+    stree.find_optimal_move()
+    stree.move_state("oo0xx0000")
+    stree.find_optimal_move()
+    stree.move_state("oo0xxx000")
+    stree.find_optimal_move()
