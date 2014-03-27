@@ -11,10 +11,6 @@ class State(object):
     def attach_child(self, state):
         self._children.append(state)
 
-    def key(self):
-        """Maps to node state."""
-        pass
-
     def __eq__(self, other):
        return self._value == other 
 
@@ -22,7 +18,7 @@ class State(object):
         return len(self._children)
 
     def __str__(self):
-        return "[\"{0}\": {1}]".format(self._value, self.utility)
+        return "\"{0}\": {1}".format(self._value, self.utility)
 
     def visit(self):
         return self._value
@@ -42,32 +38,19 @@ class StateTree(object):
     winning the game."""
     def __init__(self, goal='x', maxfirst=True, depth=9):
         self.head = None
-        self.maxfirst = maxfirst
         self._depth = depth
         # The tic-tac-toe mark controlled by MAX
+        self.maxfirst = maxfirst
         self._goal = goal
 
-    def generate_states(self, from_sequence='000000000'):
-        self.head = State(from_sequence)
-
-        if self.maxfirst:
-            self._generate_states(self.head, from_sequence, self._depth)
-        
-    def _generate_states(self, parent_state, sequence, depth):
-        if depth == 0:
-            return
-
-        # Determine which "mark" has the move in this turn (depth)
-        if depth % 2 == 0 and self.maxfirst:
-            char = 'o'
+        if self._goal == 'x':
+            self._min_char = 'o'
+            self._max_char = 'x'
         else:
-            char = 'x'
-        sequences = create_tictactoe_states(sequence, char)
+            self._min_char = 'x'
+            self._max_char = 'o'
 
-        for seq in sequences:
-            s = State(seq)
-            parent_state.attach_child(s)
-            self._generate_states(s, seq, depth-1)
+        self.count = 0
 
     def _utility(self, state):
         """Returns the utility of a state."""
@@ -88,44 +71,88 @@ class StateTree(object):
             else:
                 return -1
 
-    def minimax(self):
+    def minimax(self, from_sequence='000000000'):
         """The minimax algorithm is a recursive function which calculates
-        the utility of a state based off the terminal node values."""
-        return self._max_value(self.head, self._depth)
+        the utility of a state based off the terminal node values.
+        
+        from_sequence: The initial state for the game tree."""
+        self.head = State(from_sequence)
+        if self.maxfirst:
+            return self._minimax(self.head, self._depth, True)
+        else:
+            return self._minimax(self.head, self._depth, True)
 
-    def _min_value(self, state, depth):
-        if depth == 1: return self._utility(state)
-        value = 100
-        for s in state.children():
-            value = min(value, self._max_value(s, depth-1))
+    def minimax_decision(self):
+        """Returns the next best move as a string."""
+        next_states = self.head.children() 
+        # There may be more than one optimal state. It doesn't matter
+        # which of them is chosen.
+        for s in next_states:
+            if s.utility == 1:
+                return s.visit()
+        for s in next_states:
+            if s.utility == 0:
+                return s.visit()
+
+    def _minimax(self, state, depth, ismax):
+        if depth == 0:
+            return self._utility(state)
+
+        # Need to discard states which are already considered win or draw,
+        # otherwise the correct utility value will not bubble up, since the
+        # utility function will evaluate states which may have an invalid
+        # tic-tac-toe state. 
+        # It is important that the value of utility is changed if one of the
+        # following conditionals are true. Otherwise, the draw or winning states
+        # will not have a utility (even though the value bubbles up).
+        matrix = matrix_1d_to_2d(state.visit()) 
+        s = matrix.state()
+        if (self._goal == 'x' and s == matrix.X_WIN) or \
+            (self._goal == 'o' and s == matrix.O_WIN):
+            state.utility = 1
+            return 1
+        if s == matrix.DRAW:
+            state.utility = 0
+            return 0
+
+        if (self._goal == 'x' and s == matrix.O_WIN) or \
+            (self._goal == 'o' and s == matrix.X_WIN):
+            state.utility = -1
+            return -1
+ 
+        if depth % 2 == 0:
+            char = self._min_char    
+        else:
+            char = self._max_char 
+
+        sequences = create_tictactoe_states(state.visit(), char)
+  
+        if ismax:
+            value = -100
+        else:
+            value = 100
+
+        for seq in sequences:
+            s = State(seq)
+            self.count += 1
+            state.attach_child(s)
+            if ismax:
+                value = max(value, self._minimax(s, depth-1, False))
+            else:
+                value = min(value, self._minimax(s, depth-1, True))
 
         state.utility = value
 
         return value
-
-    def _max_value(self, state, depth):
-        if depth == 1: return self._utility(state)
-        value = -100
-        for s in state.children():
-            value = max(value, self._min_value(s, depth-1))
-
-        state.utility = value
-
-        return value
-
-    def find_optimal_move(self):
-        print("Next states:")
-        for child in self.head.children():
-            print(child)
 
     def state(self):
         return str(self.head)
 
-    def move_next_state(self):
+    def next_state(self):
         self.head = self._bfs_queue.pop(0)
         self._bfs_queue.append(*self.head.children())
 
-    def move_state(self, new_state):
+    def change_state(self, new_state):
         for child in self.head.children():
             if child == new_state:
                 print("{0} -> {1}".format(self.head, child))
@@ -146,7 +173,7 @@ def create_tictactoe_states(parent_seq, char):
     # tree can choosing only one of 3 moves. In the first move, the edge
     # marks are equivalent with each other, and also the corner marks.
     if parent_seq == '000000000':
-        return ['x00000000', '0x0000000', '0000x0000']
+        return [char + '00000000', '0' + char + '0000000', '0000' + char + '0000']
 
     # Store the indices of every zero
     indices = []
@@ -166,24 +193,37 @@ def matrix_1d_to_2d(sequence):
     matrix = []
     r = [0, 3, 6]
     for i in r:
-        matrix.append([x for x in sequence[i:i+3]])
+        row = []
+        for x in sequence[i:i+3]:
+            if x == '0':
+                row.append(0)
+            else:
+                row.append(x)
+        matrix.append(row)
 
     return GameMatrix(matrix)
 
 if __name__ == '__main__':
     import time
-    stree = StateTree(depth=9)
+    import pdb
+
+    stree = StateTree(goal='o', depth=9)
     start = time.time()
-    stree.generate_states()
-    end = time.time()
-    print("Done in {0} seconds.".format(str(end-start)))
     stree.minimax()
-    stree.move_state("0000x0000")
-    stree.move_state("o000x0000")
-    stree.find_optimal_move()
-    stree.move_state("o00xx0000")
-    stree.find_optimal_move()
-    stree.move_state("oo0xx0000")
-    stree.find_optimal_move()
-    stree.move_state("oo0xxx000")
-    stree.find_optimal_move()
+    end = time.time()
+    print("Minimax done in {0} seconds.".format(str(end-start)))
+    print("Nodes: {0}".format(stree.count))
+    for i in stree.head.children():
+        print(i) 
+    #pdb.set_trace()
+    print(stree.minimax_decision())
+    stree.change_state(stree.minimax_decision())
+    for i in stree.head.children():
+        print(i)
+    stree.change_state(stree.minimax_decision()) # Opponent's move
+    stree.change_state(stree.minimax_decision())
+    stree.change_state(stree.minimax_decision()) # Opponent's move
+    stree.change_state(stree.minimax_decision())
+    stree.change_state(stree.minimax_decision()) # Opponent's move
+    stree.change_state(stree.minimax_decision())
+    stree.change_state(stree.minimax_decision()) # Opponent's move
