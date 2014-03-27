@@ -1,5 +1,7 @@
 import unittest
 import core
+import strategy
+import time
 
 class GameMatrixTest(unittest.TestCase):
     def setUp(self):
@@ -75,6 +77,55 @@ class GameMatrixTest(unittest.TestCase):
 
         self.assertFalse(self.matrix._win_check('o'))
         self.assertFalse(self.matrix._win_check('x'))
+
+
+class StrategyTest(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_minimax_x_win(self):
+        stree = strategy.StateTree(depth=9)
+        start = time.time()
+        stree.minimax()
+        end = time.time()
+        
+        while stree.minimax_decision():
+            stree.change_state(stree.minimax_decision())
+
+        matrix = strategy.matrix_1d_to_2d(stree.head.visit())
+        self.assertTrue(matrix.state() == core.GameMatrix.X_WIN)
+
+    def test_minimax_o_win(self):
+        stree = strategy.StateTree(goal='o', depth=9)
+        stree.minimax()
+
+        while stree.minimax_decision():
+           stree.change_state(stree.minimax_decision())
+
+        matrix = strategy.matrix_1d_to_2d(stree.head.visit())
+        self.assertTrue(matrix.state() == core.GameMatrix.O_WIN)
+
+    def test_minimax_draw(self):
+        stree1 = strategy.StateTree(goal='x')
+        stree2 = strategy.StateTree(goal='o', maxfirst=False)
+        
+        stree1.minimax()
+        move = stree1.minimax_decision()
+        stree1.change_state(move)
+        stree2.minimax(move)
+
+        draw = False
+        turn = [stree2, stree1]
+        # Eight remaining turns
+        for i in range(8):
+            tree = turn.pop(0)
+            move = tree.minimax_decision()
+            stree2.change_state(move)
+            stree1.change_state(move)
+            turn.append(tree)
+
+        matrix = strategy.matrix_1d_to_2d(stree1.head.visit())
+        self.assertTrue(matrix.state() == core.GameMatrix.DRAW)
 
 
 if __name__ == '__main__':

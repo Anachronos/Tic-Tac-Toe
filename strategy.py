@@ -43,13 +43,6 @@ class StateTree(object):
         self.maxfirst = maxfirst
         self._goal = goal
 
-        if self._goal == 'x':
-            self._min_char = 'o'
-            self._max_char = 'x'
-        else:
-            self._min_char = 'x'
-            self._max_char = 'o'
-
         self.count = 0
 
     def _utility(self, state):
@@ -80,7 +73,7 @@ class StateTree(object):
         if self.maxfirst:
             return self._minimax(self.head, self._depth, True)
         else:
-            return self._minimax(self.head, self._depth, True)
+            return self._minimax(self.head, self._depth-1, True)
 
     def minimax_decision(self):
         """Returns the next best move as a string."""
@@ -96,7 +89,8 @@ class StateTree(object):
 
     def _minimax(self, state, depth, ismax):
         if depth == 0:
-            return self._utility(state)
+            state.utility = self._utility(state)
+            return state.utility
 
         # Need to discard states which are already considered win or draw,
         # otherwise the correct utility value will not bubble up, since the
@@ -121,9 +115,9 @@ class StateTree(object):
             return -1
  
         if depth % 2 == 0:
-            char = self._min_char    
+            char = 'x'   
         else:
-            char = self._max_char 
+            char = 'o' 
 
         sequences = create_tictactoe_states(state.visit(), char)
   
@@ -213,13 +207,9 @@ if __name__ == '__main__':
     end = time.time()
     print("Minimax done in {0} seconds.".format(str(end-start)))
     print("Nodes: {0}".format(stree.count))
-    for i in stree.head.children():
-        print(i) 
     #pdb.set_trace()
     print(stree.minimax_decision())
     stree.change_state(stree.minimax_decision())
-    for i in stree.head.children():
-        print(i)
     stree.change_state(stree.minimax_decision()) # Opponent's move
     stree.change_state(stree.minimax_decision())
     stree.change_state(stree.minimax_decision()) # Opponent's move
